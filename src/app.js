@@ -4,8 +4,7 @@ import { v4 as uuid } from 'uuid';
 import bcrypt from 'bcrypt';
 import dayjs from 'dayjs';
 
-import connection from "./connection.js"
-
+import connection from "../src/connection.js"
 
 
 const app = express();
@@ -18,13 +17,23 @@ app.post("/sign-up", async (req, res) => {
     const hash = bcrypt.hashSync(password, 10);
 
     try{
-        await connection.query(`
-        INSERT INTO users (name, email, password) 
-        VALUES ($1, $2, $3)
-        `, [name, email, hash])
+        const result = await connection.query(`
+            SELECT * 
+            FROM users 
+            WHERE email = $1
+        `, [email])
 
-        res.sendStatus(200);
+        if(result.rows.length !== 0){
+            return res.sendStatus(403)
 
+        } else{
+            await connection.query(`
+                INSERT INTO users (name, email, password) 
+                VALUES ($1, $2, $3)
+            `, [name, email, hash])
+
+            return res.sendStatus(200);
+        }
     } catch{
         res.sendStatus(500);
     }
@@ -48,7 +57,8 @@ app.post("/log-in", async (req, res) => {
             `, [user.id, token]);
 
             res.status(200).send(token);
-            
+        } else {
+            res.sendStatus(401);
         }
 
     } catch{
@@ -87,7 +97,7 @@ app.post("/amount", async (req, res) => {
 })
 
 
-app.get("/main-page", async (req, res) => {
+app.get("/amount", async (req, res) => {
     const authorization = req.headers.authorization;
     const token = authorization?.replace('Bearer ', '');
     
@@ -116,4 +126,3 @@ app.get("/main-page", async (req, res) => {
 })
 
 export default app;
-
